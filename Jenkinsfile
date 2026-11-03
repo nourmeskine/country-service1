@@ -6,28 +6,41 @@ pipeline {
     stages {
         stage('Checkout code') {
             steps {
-                checkout scm
+                // REMPLACER par l'URL de TON fork GitHub
+                git branch: 'master', url: 'https://github.com/nourmeskine/country-service1'
             }
         }
-        stage('Compile code') {
+        stage('Build maven') {
             steps {
-                sh 'mvn compile'
+                sh 'mvn clean install'
             }
         }
-        stage('Test code') {
+        stage('Deploy using Ansible playbook') {
             steps {
-                sh 'mvn test'
-            }
-            post {
-                success {
-                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+                withCredentials([
+                    string(credentialsId: 'ansible-vault-pass', variable: 'VAULT_PASS'),
+                    file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')
+                ]) {
+                    sh '''
+                        trap 'rm -f .vault_pass' EXIT
+                        printf '%s' "$VAULT_PASS" > .vault_pass
+                        ansible-playbook -i hosts playbookCICD.yml \
+                            --vault-password-file .vault_pass \
+                            -e kubeconfig_path="$KUBECONFIG_FILE"
+                    '''
                 }
             }
         }
-        stage('Package code') {
-            steps {
-                sh 'mvn package'
-            }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Ansible playbook executed successfully!'
+        }
+        failure {
+            echo 'Ansible playbook execution failed!'
         }
     }
 }
