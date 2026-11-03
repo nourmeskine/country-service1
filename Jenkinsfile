@@ -7,7 +7,7 @@ pipeline {
         stage('Checkout code') {
             steps {
                 // REMPLACER par l'URL de TON fork GitHub
-                git branch: 'master', url: 'https://github.com/nourmeskine/country-service1'
+                git branch: 'main', url: 'https://github.com/nourmeskine/country-service1'
             }
         }
         stage('Build maven') {
