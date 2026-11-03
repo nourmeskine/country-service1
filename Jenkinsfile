@@ -6,7 +6,6 @@ pipeline {
     stages {
         stage('Checkout code') {
             steps {
-                // REMPLACER par l'URL de TON fork GitHub
                 git branch: 'main', url: 'https://github.com/nourmeskine/country-service1'
             }
         }
@@ -15,32 +14,21 @@ pipeline {
                 sh 'mvn clean install'
             }
         }
-        stage('Deploy using Ansible playbook') {
+        stage('Build Dockerfile') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'ansible-vault-pass', variable: 'VAULT_PASS'),
-                    file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')
-                ]) {
-                    sh '''
-                        trap 'rm -f .vault_pass' EXIT
-                        printf '%s' "$VAULT_PASS" > .vault_pass
-                        ansible-playbook -i hosts playbookCICD.yml \
-                            --vault-password-file .vault_pass \
-                            -e kubeconfig_path="$KUBECONFIG_FILE"
-                    '''
+                sh 'docker build . -t my-country-service:$BUILD_NUMBER'
+                withCredentials([string(credentialsId: 'dockerhub-pwd', variable: 'dockerhubpwd')]) {
+                    sh 'docker login -u jamina2385 -p ${dockerhubpwd}'
                 }
+                sh 'docker tag my-country-service:$BUILD_NUMBER jamina2385/my-country-service:$BUILD_NUMBER'
+                sh 'docker push jamina2385/my-country-service:$BUILD_NUMBER'
             }
         }
-    }
-    post {
-        always {
-            cleanWs()
-        }
-        success {
-            echo 'Ansible playbook executed successfully!'
-        }
-        failure {
-            echo 'Ansible playbook execution failed!'
+        stage('Deploy micro-service') {
+            steps {
+                sh 'docker rm -f $(docker ps -aq)'
+                sh 'docker run -d -p 8082:8082 my-country-service:$BUILD_NUMBER'
+            }
         }
     }
 }
