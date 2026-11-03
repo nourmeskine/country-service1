@@ -15,15 +15,17 @@ pipeline {
             }
         }
         stage('Build Dockerfile') {
-            steps {
-                sh 'docker build . -t my-country-service:$BUILD_NUMBER'
-                withCredentials([string(credentialsId: 'dockerhub-credentials', variable: 'dockerhubpwd')]) {
-                    sh 'docker login -u jamina2385 -p ${dockerhubpwd}'
-                }
-                sh 'docker tag my-country-service:$BUILD_NUMBER jamina2385/my-country-service:$BUILD_NUMBER'
-                sh 'docker push jamina2385/my-country-service:$BUILD_NUMBER'
-            }
+    steps {
+        sh 'docker build . -t my-country-service:$BUILD_NUMBER'
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials',
+                                          usernameVariable: 'DOCKER_USER',
+                                          passwordVariable: 'DOCKER_PASS')]) {
+            sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+            sh 'docker tag my-country-service:$BUILD_NUMBER $DOCKER_USER/my-country-service:$BUILD_NUMBER'
+            sh 'docker push $DOCKER_USER/my-country-service:$BUILD_NUMBER'
         }
+    }
+}
         stage('Deploy micro-service') {
             steps {
                 sh 'docker rm -f $(docker ps -aq)'
