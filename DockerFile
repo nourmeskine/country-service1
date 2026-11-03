@@ -1,7 +1,4 @@
-FROM eclipse-temurin:17-jre-alpine
-WORKDIR /app
-# Un seul .jar executable dans target/ : country-service1-0.0.1-SNAPSHOT.jar
+FROM openjdk:21-oracle
+VOLUME /tmp
 COPY target/*.jar app.jar
-# Spring Boot ecoute sur 8080 par defaut (pas de server.port dans application.properties)
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","/app.jar"]
